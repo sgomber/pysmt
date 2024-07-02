@@ -129,6 +129,13 @@ class SmtLibCommand(namedtuple('SmtLibCommand', ['name', 'args'])):
                                             type_decl.name,
                                             type_decl.arity))
 
+        elif self.name == smtcmd.DECLARE_ORACLE_FUN:
+            symbol = self.args[0]
+            type_str = symbol.symbol_type().as_smtlib()
+            outstream.write("(%s %s %s)" % (self.name,
+                                            quote(symbol.symbol_name()),
+                                            type_str))
+      
         elif self.name in smtcmd.ALL_COMMANDS:
             raise NotImplementedError("'%s' is a valid SMT-LIB command "\
                                       "but it is currently not supported. "\

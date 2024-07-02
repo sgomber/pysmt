@@ -22,6 +22,7 @@ CHECK_SAT='check-sat'
 CHECK_SAT_ASSUMING='check-sat-assuming'
 DECLARE_CONST='declare-const'
 DECLARE_FUN='declare-fun'
+DECLARE_ORACLE_FUN='declare-oracle-fun'
 DECLARE_SORT='declare-sort'
 DEFINE_FUN='define-fun'
 DEFINE_FUN_REC='define-fun-rec'
@@ -55,6 +56,7 @@ SMT_LIB_2_0 = [
     DECLARE_SORT,
     DEFINE_SORT,
     DECLARE_FUN,
+    DECLARE_ORACLE_FUN,
     DEFINE_FUN,
     PUSH,
     POP,

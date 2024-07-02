@@ -328,6 +328,95 @@ class _FunctionType(PySMTType):
     def __hash__(self):
         return self._hash
 
+class _OracleFunctionType(PySMTType):
+    """Internal class used to represent an Oracle Function type.
+    Oracle functions are the functions that are implemented using
+    an external oracle.
+
+    This class should not be instantiated directly, but the factory
+    method OracleFunctionType should be used instead.
+    """
+
+    _instances = {}
+
+    def __init__(self, return_type, param_types, oracle_path):
+        PySMTType.__init__(self)
+        self._return_type = return_type
+        self._param_types = tuple(param_types)
+        self._oracle_path = oracle_path
+        self._hash = hash(return_type) + sum(hash(p) for p in param_types) + hash(oracle_path)
+        # Note:
+
+        # An underlying assumption of this module is that
+        # PySMTType.args can be used as key to identify a given type
+        # instance. This means that all subtypes are accessible
+        # through args (similarly as how we do FNode.args).
+        #
+        # This means that
+        #  - Hashing can use args as a key
+        #  - Navigating the type tree (e.g., during normalization)
+        #    only works on args.
+        #
+        # In order to make this possible, we need to combine the
+        # return typ and param_types for FunctionType.
+        self.args = (self._return_type,) + self.param_types
+        self.arity = len(self.args)
+        return
+
+    @property
+    def param_types(self):
+        """Returns the arguments of the Function Type.
+
+        E.g.,  F: (Bool -> Bool) -> Real
+        Returns [BoolType, BoolType].
+        """
+        return self._param_types
+
+    @property
+    def return_type(self):
+        """Returns the return type of  the Function Type.
+
+        E.g.,  F: (Bool -> Bool) -> Real
+        Returns RealType.
+        """
+        return self._return_type
+
+    @property
+    def oracle_path(self):
+        """
+        Returns the path of the executable that implements the oracle.
+        """
+        return self._oracle_path
+
+    def as_smtlib(self):
+        args = [p.as_smtlib(False)
+                for p in self.param_types]
+        rtype = self.return_type.as_smtlib(False)
+
+        res = "(%s) %s %s" % (" ".join(args), rtype, self.oracle_path)
+        return res
+
+    def __str__(self):
+        return " -> ".join([str(p) for p in self.param_types] +
+                           [str(self.return_type)])
+
+    def is_function_type(self):
+        return True
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        if self is other:
+            return True
+        if other.is_function_type():
+            if self.return_type == other.return_type and\
+               self.param_types == other.param_types and\
+               self.oracle_path == other.oracle_path:
+                return True
+        return False
+
+    def __hash__(self):
+        return self._hash
 
 class _TypeDecl(object):
     """Create a new Type Declaration (sort).
@@ -394,6 +483,7 @@ class TypeManager(object):
     def __init__(self, environment):
         self._bv_types = {}
         self._function_types = {}
+        self._oracle_function_types = {}
         self._array_types = {}
         self._custom_types = {}
         self._custom_types_decl = {}
@@ -464,6 +554,30 @@ class TypeManager(object):
             ty = _FunctionType(return_type=return_type,
                                param_types=param_types)
             self._function_types[key] = ty
+        return ty
+
+    def OracleFunctionType(self, return_type, param_types, oracle_path):
+        """Returns the singleton of the Oracle Function type with the given arguments.
+
+        This function takes care of building and registering the type
+        whenever needed. To see the functions provided by the type look at
+        _OracleFunctionType.
+        """
+        param_types = tuple(param_types)
+        key = (return_type, param_types)
+
+        # 0-arity oracle functions don't make sense.
+        assert len(param_types) != 0
+
+        try:
+            ty = self._oracle_function_types[key]
+        except KeyError:
+            assert_is_type(return_type, __name__)
+            assert_are_types(param_types, __name__)
+            ty = _OracleFunctionType(return_type=return_type,
+                                     param_types=param_types,
+                                     oracle_path=oracle_path)
+            self._oracle_function_types[key] = ty
         return ty
 
     def ArrayType(self, index_type, elem_type):

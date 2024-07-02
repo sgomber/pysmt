@@ -450,6 +450,7 @@ class SmtLibParser(object):
                          smtcmd.CHECK_SAT_ASSUMING : self._cmd_check_sat_assuming,
                          smtcmd.DECLARE_CONST : self._cmd_declare_const,
                          smtcmd.DECLARE_FUN : self._cmd_declare_fun,
+                         smtcmd.DECLARE_ORACLE_FUN : self._cmd_declare_oracle_fun,
                          smtcmd.DECLARE_SORT: self._cmd_declare_sort,
                          smtcmd.DEFINE_FUN : self._cmd_define_fun,
                          smtcmd.DEFINE_FUNS_REC : self._cmd_define_funs_rec,
@@ -1251,6 +1252,25 @@ class SmtLibParser(object):
 
         if params:
             typename = self.env.type_manager.FunctionType(typename, params)
+
+        v = self._get_var(var, typename)
+        if v.symbol_type().is_function_type():
+            self.cache.bind(var,
+                    functools.partial(self._function_call_helper, v))
+        else:
+            self.cache.bind(var, v)
+        return SmtLibCommand(current, [v])
+
+    def _cmd_declare_oracle_fun(self, current, tokens):
+        """(declare-oracle-fun <symbol> (<sort>*) <sort> <path>)"""
+        var = self.parse_atom(tokens, current)
+        params = self.parse_params(tokens, current)
+        typename = self.parse_type(tokens, current)
+        path = self.parse_atom(tokens, current)
+        self.consume_closing(tokens, current)
+
+        if params:
+            typename = self.env.type_manager.OracleFunctionType(typename, params, path)
 
         v = self._get_var(var, typename)
         if v.symbol_type().is_function_type():
