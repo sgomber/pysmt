@@ -564,7 +564,7 @@ class TypeManager(object):
         _OracleFunctionType.
         """
         param_types = tuple(param_types)
-        key = (return_type, param_types)
+        key = (return_type, param_types, oracle_path)
 
         # 0-arity oracle functions don't make sense.
         assert len(param_types) != 0
